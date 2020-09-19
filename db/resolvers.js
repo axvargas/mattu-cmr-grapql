@@ -397,6 +397,10 @@ const resolvers = {
 					throw new Error("The client does not exists")
 				}
 
+				// * Check if the client belongs to the seller
+				if (clientExists.seller.toString() !== user.id) {
+					throw new Error("You are not authorized to do this operation")
+				}
 
 				// * Check if the seller assigned is the editor
 				if (order.seller.toString() !== user.id) {
