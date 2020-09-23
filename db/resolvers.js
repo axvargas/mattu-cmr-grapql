@@ -158,6 +158,82 @@ const resolvers = {
 			} catch (error) {
 				throw new Error(error.message)
 			}
+		},
+		getOrderByStatus: async (_, { state }, ctx) => {
+			const orders = await Order.find({ seller: ctx.user.id, state })
+			return orders
+		},
+
+
+		getBestClients: async () => {
+			const bestClients = await Order.aggregate([
+				{
+					$match: {
+						state: "COMPLETED"
+					}
+				},
+				{
+					$group: {
+						_id: '$client',
+						total: { $sum: '$total' }
+					}
+				},
+				{
+					$lookup: {
+						from: 'clients',
+						localField: '_id',
+						foreignField: '_id',
+						as: 'client'
+					}
+				},
+				{
+					$limit: 10
+				},
+				{
+					$sort: {
+						total: -1
+					}
+				}
+			])
+
+			return bestClients
+		},
+		getBestSellers: async () => {
+			const bestSellers = await Order.aggregate([
+				{
+					$match: {
+						state: "COMPLETED"
+					}
+				},
+				{
+					$group: {
+						_id: '$seller',
+						total: { $sum: '$total' }
+					}
+				},
+				{
+					$lookup: {
+						from: 'users',
+						localField: '_id',
+						foreignField: '_id',
+						as: 'seller'
+					}
+				},
+				{
+					$limit: 3
+				},
+				{
+					$sort: {
+						total: -1
+					}
+				}
+			])
+
+			return bestSellers
+		},
+		searchProductByName: async (_, { text }) => {
+			const products = await Product.find({ $text: { $search: text } })
+			return products
 		}
 	},
 
@@ -383,11 +459,11 @@ const resolvers = {
 		updateOrder: async (_, { id, input }, ctx) => {
 			try {
 				const { user } = ctx
-				const {client} = input
+				const { client } = input
 
 				// * Check if the order exists
-				const order = await Order.findById(id)
-				if (!order) {
+				const oldOrder = await Order.findById(id)
+				if (!oldOrder) {
 					throw new Error("The order does not exists")
 				}
 
@@ -403,21 +479,32 @@ const resolvers = {
 				}
 
 				// * Check if the seller assigned is the editor
-				if (order.seller.toString() !== user.id) {
+				if (oldOrder.seller.toString() !== user.id) {
 					throw new Error("You are not authorized to do this operation")
 				}
 
 				// * Handle the stock
-				for await (const orderedProduct of input.order) {
-					const { id } = orderedProduct
-					const product = await Product.findById(id)
-
-					if (orderedProduct.quantity > product.stock) {
-						throw new Error(`The product: ${product.name} exceeds the available stock`)
-					} else {
-						// * Substract stock - quantity
-						product.stock = product.stock - orderedProduct.quantity
+				if (input.order) {
+					// ? First normalize the stock as if the order has never occured
+					for await (const oldOrderedProduct of oldOrder.order) {
+						const { id } = oldOrderedProduct
+						const product = await Product.findById(id)
+						product.stock = product.stock + oldOrderedProduct.quantity
 						await product.save()
+					}
+
+					// ? Then proceed as normal
+					for await (const orderedProduct of input.order) {
+						const { id } = orderedProduct
+						const product = await Product.findById(id)
+
+						if (orderedProduct.quantity > product.stock) {
+							throw new Error(`The product: ${product.name} exceeds the available stock`)
+						} else {
+							// * Substract stock - quantity
+							product.stock = product.stock - orderedProduct.quantity
+							await product.save()
+						}
 					}
 				}
 
@@ -439,9 +526,17 @@ const resolvers = {
 					throw new Error("The order does not exists")
 				}
 
-				// * Check if the seller assigned is the deleter
+				// * Check if the seller assigned is the editor
 				if (order.seller.toString() !== user.id) {
 					throw new Error("You are not authorized to do this operation")
+				}
+
+				// * Return stock to normality
+				for await (const oldOrderedProduct of order.order) {
+					const { id } = oldOrderedProduct
+					const product = await Product.findById(id)
+					product.stock = product.stock + oldOrderedProduct.quantity
+					await product.save()
 				}
 
 				// * Delete register in the DB

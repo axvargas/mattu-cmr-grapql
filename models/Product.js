@@ -17,10 +17,12 @@ const ProductSchema = new Schema({
         required: true,
         trim: true
     },
-    createdAt:{
+    createdAt: {
         type: Date,
         default: Date.now()
     }
 })
+
+ProductSchema.index({ name: 'text'})    // ? This is to make if findable
 
 module.exports = mongoose.model('Product', ProductSchema)
