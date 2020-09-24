@@ -15,17 +15,22 @@ const server = new ApolloServer({
     typeDefs,
     resolvers,
     context: ({ req }) => {
-    
         const token = req.headers['authorization'] || ""
-        if(token){
+        if (token) {
             try {
-                const user = jwt.verify(token, process.env.SECRET)
+                const user = jwt.verify(token.replace('Bearer ', ''), process.env.SECRET)
                 return {
                     user
                 }
             } catch (error) {
+                console.log(error)
+                if (error.message === 'invalid token') {
+                    throw new Error("Invalid token")
+                }
                 throw new Error("No authorization, your session might have expired")
             }
+        }else{
+            console.log("No Token");
         }
     }
 })

@@ -44,17 +44,9 @@ const generateToken = async (user, secret, expiresIn) => {
 const resolvers = {
 
 	Query: {
-		getAuthenticatedUser: (_, { token }) => {
-			try {
-				const userId = jwt.verify(token, process.env.SECRET)
-				return userId
-			} catch (error) {
-				if (error.message === "jwt expired") {
-					throw new Error("The session has expired")
-				}
-				throw new Error(error.message)
-			}
-
+		getAuthenticatedUser: (_, { }, ctx) => {
+			console.log(ctx);
+			return ctx.user
 		},
 
 
@@ -89,10 +81,12 @@ const resolvers = {
 				throw new Error(error.message)
 			}
 		},
-		getClientBySeller: async (_, { }, ctx) => {
+		getClientsBySeller: async (_, { }, ctx) => {
 			try {
 				const { user } = ctx
-
+				if (!user) {
+					throw new Error('You are not authorized')
+				}
 				const clients = await Client.find({ seller: user.id.toString() })
 				return clients
 			} catch (error) {
