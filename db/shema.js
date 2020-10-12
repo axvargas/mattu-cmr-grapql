@@ -43,13 +43,15 @@ const typeDefs = gql`
     }
 
     input OrderProductInput {
-        id: ID!
-        quantity: Int!
+        id: ID
+        quantity: Int
+        name: String
+        price: Float
     }
 
     input OrderInput {
         order: [OrderProductInput]
-        total: Float!
+        total: Float
         client: ID!
         state: OrderState
     }
@@ -57,7 +59,7 @@ const typeDefs = gql`
     enum OrderState {
         PENDING
         COMPLETED
-        CANCELED
+        CANCELLED
     }
     
     
@@ -102,7 +104,7 @@ const typeDefs = gql`
         id: ID
         order: [OrderProduct]
         total: Float
-        client: ID
+        client: Client
         seller:ID
         state: OrderState
         createdAt: String
@@ -111,6 +113,8 @@ const typeDefs = gql`
     type OrderProduct {
         id: ID
         quantity: Int
+        name: String
+        price: Float
     }
 
     type Token {
@@ -150,7 +154,7 @@ const typeDefs = gql`
         # Products
         createProduct(input: ProductInput!): Product
         updateProduct(id: ID!, input: ProductUpdateInput!): Product
-        deleteProdct(id: ID!): String
+        deleteProduct(id: ID!): String
 
         # Clients
         createClient(input: ClientInput!): Client

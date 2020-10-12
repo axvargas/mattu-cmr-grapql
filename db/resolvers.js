@@ -127,7 +127,8 @@ const resolvers = {
 			try {
 				const { user } = ctx
 
-				const orders = await Order.find({ seller: user.id.toString() })
+				const orders = await Order.find({ seller: user.id.toString() }).populate('client')
+				console.log(orders);
 				return orders
 			} catch (error) {
 				throw new Error(error.message)
@@ -185,7 +186,8 @@ const resolvers = {
 				},
 				{
 					$sort: {
-						total: -1
+						total: -1,
+						_id : 1 
 					}
 				}
 			])
@@ -218,7 +220,8 @@ const resolvers = {
 				},
 				{
 					$sort: {
-						total: -1
+						total: -1,
+						_id : 1 
 					}
 				}
 			])
@@ -308,15 +311,20 @@ const resolvers = {
 				if (!product) {
 					throw new Error("The product does not exist")
 				}
+				// * Check if the product already exists
+				const productExisted = await Product.findOne({ name: input.name })
+				if (productExisted && id !== productExisted.id) {
+					throw new Error('The product already exists')
+				}
 
 				// * Update it in the DB
-				const updatedProduct = await product.findOneAndUpdate({ _id: id }, input, { new: true }) // ? This is to return the updated register
+				const updatedProduct = await Product.findOneAndUpdate({ _id: id }, input, { new: true }) // ? This is to return the updated register
 				return updatedProduct
 			} catch (error) {
 				throw new Error(error.message)
 			}
 		},
-		deleteProdct: async (_, { id }) => {
+		deleteProduct: async (_, { id }) => {
 			try {
 				// * Check if the product exists
 				const product = await Product.findById(id)
