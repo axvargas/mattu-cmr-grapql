@@ -29,13 +29,13 @@ const server = new ApolloServer({
                 }
                 throw new Error("No authorization, your session might have expired")
             }
-        }else{
+        } else {
             console.log("No Token");
         }
     }
 })
 
 // * RUN THE SERVER
-server.listen().then(({ url }) => {
+server.listen({ port: process.env.PORT || 4000 }).then(({ url }) => {
     console.log(`Server ready on this URL: ${url}`)
 })
